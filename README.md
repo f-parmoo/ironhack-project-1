@@ -1,4 +1,4 @@
-<!-- © 2024 | Ironhack -->
+<!-- © 2026 | Ironhack -->
 
 ---
 
@@ -38,7 +38,7 @@ By dealing with this “messy” environment, you’ll build real-world problem-
 1. Ensure you have Python 3.10+ installed.
 2. Navigate to the `vote` directory:
    ```bash
-   cd vote
+   cd services/vote
    pip install -r requirements.txt
    python app.py
    ```
@@ -58,7 +58,7 @@ By dealing with this “messy” environment, you’ll build real-world problem-
 1. Ensure .NET 7.0 SDK is installed.
 2. Navigate to `worker`:
    ```bash
-   cd worker
+   cd services/worker
    dotnet restore
    dotnet run
    ```
@@ -78,7 +78,7 @@ By dealing with this “messy” environment, you’ll build real-world problem-
 1. Ensure Node.js 18+ is installed.
 2. Navigate to `result`:
    ```bash
-   cd result
+   cd services/result
    npm install
    node server.js
    ```
