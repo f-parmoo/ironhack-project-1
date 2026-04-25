@@ -1,4 +1,17 @@
+# Services
 node_modules/
 bin/
 obj/
 publish/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+terraform.tfvars
+
+# SSH keys
+*.pem
+id_rsa*
+*.pub
