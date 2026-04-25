@@ -153,3 +153,33 @@ docker buildx build --platform linux/amd64 -t myorg/worker:latest ./worker
 This ensures the image is built for the desired platform.
 
 ---
+
+
+## ⚙️ Ansible Setup
+
+Before running the Ansible playbooks, make sure to update the `hosts.ini` file with your own server IP addresses.
+
+### 📌 Update Inventory File
+
+Edit `ansible/hosts.ini` and replace the hosts with your own infrastructure details:
+
+### 🐳 Install Docker
+
+Run the following command to install Docker on all target machines:
+```bash
+ansible-playbook -i ansible/hosts.ini ansible/install_docker.yaml
+```
+
+###  📦 Deploy Containers
+
+Deploy the application containers using:
+```bash
+ansible-playbook -i ansible/hosts.ini ansible/deploy_containers.yaml
+```
+
+### 🌐 Access the Application
+
+After deployment, you can access the services via:
+
+Frontend: http://<FRONTEND_PUBLIC_IP>:8080
+Backend: http://<FRONTEND_PUBLIC_IP>:8081
