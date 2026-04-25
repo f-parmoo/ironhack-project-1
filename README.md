@@ -155,6 +155,68 @@ This ensures the image is built for the desired platform.
 ---
 
 
+## 🌍 Terraform Setup
+
+The Terraform configuration is split into two parts:
+
+1. `bootstrap`
+2. `infra`
+
+You must apply the `bootstrap` configuration first.  
+The `bootstrap` step creates the S3 bucket and DynamoDB table used for storing and locking the Terraform remote state.
+
+---
+
+### 🧱 Bootstrap Terraform Backend
+
+Go to the `bootstrap` directory and run commans:
+
+```bash
+cd terraform/bootstrap
+terraform init
+terraform plan
+terraform apply
+```
+This will create:
+
+An S3 bucket for Terraform state
+S3 bucket versioning
+Server-side encryption
+Public access blocking
+A DynamoDB table for Terraform state locking
+
+### 🏗️ Deploy Infrastructure
+#### 📌 Terraform Remote State
+
+The infra configuration uses the S3 backend created in the bootstrap step:
+```
+terraform {
+  required_version = ">= 1.5.0"
+
+  backend "s3" {
+    bucket         = "voting-project-tf-state-bucket"
+    key            = "terraform.tfstate"
+    region         = "us-east-1"
+    encrypt        = true
+    dynamodb_table = "voting-project-tf-state-lock"
+  }
+}
+```
+Make sure the backend bucket and DynamoDB table names match the resources created by the bootstrap configuration.
+### Creating AWS services
+After the bootstrap step is completed, go to the infra directory and run commans:
+```bash
+cd terraform/infra
+terraform init
+terraform plan
+terraform apply
+```
+
+
+
+
+---
+
 ## ⚙️ Ansible Setup
 
 Before running the Ansible playbooks, make sure to update the `hosts.ini` file with your own server IP addresses.
@@ -183,3 +245,5 @@ After deployment, you can access the services via:
 
 Frontend: http://<FRONTEND_PUBLIC_IP>:8080
 Backend: http://<FRONTEND_PUBLIC_IP>:8081
+
+---
