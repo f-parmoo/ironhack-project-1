@@ -1,0 +1,95 @@
+- name: Deploy database container
+  hosts: db
+  become: yes
+  tasks:
+    - name: Run Postgres
+      shell: |
+        docker rm -f postgres || true
+        docker volume create postgres-data || true
+        docker pull postgres:15
+        docker run -d \
+          --name postgres \
+          -e POSTGRES_USER=postgres \
+          -e POSTGRES_PASSWORD=postgres \
+          -e POSTGRES_DB=postgres \
+          -p 5432:5432 \
+          -v postgres-data:/var/lib/postgresql/data \
+          postgres:15
+
+    - name: Wait for Postgres
+      shell: |
+        until docker exec postgres pg_isready -U postgres; do
+          sleep 5
+        done
+
+- name: Deploy backend containers
+  hosts: backend
+  become: yes
+  tasks:
+    - name: Pull worker image
+      shell: docker pull fatemehparmoo/worker:latest
+
+    - name: Create backend docker network
+      shell: docker network create backend-net || true
+
+    - name: Run Redis
+      shell: |
+        docker rm -f redis || true
+        docker pull redis:alpine
+        docker run -d \
+          --name redis \
+          --network backend-net \
+          -p 6379:6379 \
+          redis:alpine
+
+    - name: Wait for Redis
+      shell: |
+        until docker exec redis redis-cli ping | grep PONG; do
+          sleep 5
+        done
+
+    - name: Run worker
+      shell: |
+        docker rm -f worker || true
+        docker run -d \
+          --name worker \
+          --network backend-net \
+          -e DB_HOST="{{ hostvars['db-ec2'].ansible_host }}" \
+          -e DB_USERNAME=postgres \
+          -e DB_PASSWORD=postgres \
+          -e DB_NAME=postgres \
+          -e REDIS_HOST=redis \
+          fatemehparmoo/worker:latest
+
+- name: Deploy frontend containers
+  hosts: frontend
+  become: yes
+  tasks:
+    - name: Pull frontend images
+      shell: |
+        docker pull fatemehparmoo/vote:latest
+        docker pull fatemehparmoo/result:latest
+
+    - name: Run vote app
+      shell: |
+        docker rm -f vote || true
+        docker run -d \
+          --name vote \
+          -e REDIS_HOST="{{ hostvars['backend-ec2'].ansible_host }}" \
+          -e REDIS_PORT=6379 \
+          -p 8080:80 \
+          fatemehparmoo/vote:latest
+
+    - name: Run result app
+      shell: |
+        docker rm -f result || true
+        docker run -d \
+          --name result \
+          -e PORT=80 \
+          -e PG_HOST="{{ hostvars['db-ec2'].ansible_host }}" \
+          -e PG_PORT=5432 \
+          -e PG_USER=postgres \
+          -e PG_PASSWORD=postgres \
+          -e PG_DATABASE=postgres \
+          -p 8081:80 \
+          fatemehparmoo/result:latest
