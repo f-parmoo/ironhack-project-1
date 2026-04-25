@@ -3,39 +3,39 @@
 
 services:
   vote:
-    image: fatemehparmoo/vote:latest
+    image: ${DOCKERHUB_USERNAME}/vote:latest
     build: ./services/vote
     platform: linux/amd64
-
+    
     depends_on:
       redis:
-        condition: service_healthy 
+        condition: service_healthy
     ports:
       - "8080:80"
     networks:
       - back-tier
 
   result:
-    image: fatemehparmoo/result:latest
+    image: ${DOCKERHUB_USERNAME}/result:latest
     build: ./services/result
     platform: linux/amd64
     depends_on:
       db:
-        condition: service_healthy 
+        condition: service_healthy
     ports:
       - "8081:80"
     networks:
       - back-tier
 
   worker:
+    image: ${DOCKERHUB_USERNAME}/worker:latest
     build: ./services/worker
-    image: fatemehparmoo/worker:latest
     platform: linux/amd64
     depends_on:
       redis:
-        condition: service_healthy 
+        condition: service_healthy
       db:
-        condition: service_healthy 
+        condition: service_healthy
     networks:
       - back-tier
 
