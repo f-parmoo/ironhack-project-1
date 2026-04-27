@@ -70,9 +70,6 @@ resource "aws_internet_gateway" "igw" {
 }
 
 
-
-
-
 resource "aws_eip" "nat" {
   count      = length(aws_subnet.public)
   domain     = "vpc"
@@ -133,12 +130,15 @@ resource "aws_route_table_association" "public" {
 
 resource "aws_key_pair" "my_key" {
   key_name   = "${var.project_name}-key"
-  public_key = file(var.public_key_file_path)
+  public_key = file(pathexpand(var.public_key_file_path))
 }
 
 
+# --------------------------------------------------------------------
+# Frontend Load Balancer and Target Groups and Listeners
+# --------------------------------------------------------------------
 
-resource "aws_lb" "web" {
+resource "aws_lb" "frontend" {
   name               = "${var.project_name}-alb"
   internal           = false
   load_balancer_type = "application"
@@ -147,7 +147,6 @@ resource "aws_lb" "web" {
 
   tags = local.tags
 }
-
 
 resource "aws_lb_target_group" "vote" {
   name     = "${var.project_name}-vote-tg"
@@ -186,7 +185,7 @@ resource "aws_lb_target_group" "result" {
 }
 
 resource "aws_lb_listener" "vote" {
-  load_balancer_arn = aws_lb.web.arn
+  load_balancer_arn = aws_lb.frontend.arn
   port              = 8080
   protocol          = "HTTP"
 
@@ -197,7 +196,7 @@ resource "aws_lb_listener" "vote" {
 }
 
 resource "aws_lb_listener" "result" {
-  load_balancer_arn = aws_lb.web.arn
+  load_balancer_arn = aws_lb.frontend.arn
   port              = 8081
   protocol          = "HTTP"
 
@@ -206,6 +205,9 @@ resource "aws_lb_listener" "result" {
     target_group_arn = aws_lb_target_group.result.arn
   }
 }
+# --------------------------------------------------------------------
+# Security Groups
+# --------------------------------------------------------------------
 
 resource "aws_security_group" "alb" {
   name        = "${var.project_name}-alb-sg"
@@ -304,15 +306,15 @@ resource "aws_security_group" "frontend" {
 
 resource "aws_security_group" "backend" {
   name        = "${var.project_name}-backend-sg"
-  description = "Allow Redis traffic from frontend and SSH access from bastion host"
+  description = "Allow Redis traffic from private subnets via internal NLB and SSH access from bastion host"
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    description     = "Redis from frontend"
-    from_port       = 6379
-    to_port         = 6379
-    protocol        = "tcp"
-    security_groups = [aws_security_group.frontend.id]
+    description = "Redis from private subnets through internal NLB"
+    from_port   = 6379
+    to_port     = 6379
+    protocol    = "tcp"
+    cidr_blocks = var.private_subnet_cidrs
   }
 
   ingress {
@@ -335,16 +337,8 @@ resource "aws_security_group" "backend" {
 
 resource "aws_security_group" "db" {
   name        = "${var.project_name}-db-sg"
-  description = "Allow PostgreSQL access from frontend and backend, and SSH access from bastion host"
+  description = "Allow PostgreSQL access from frontend and backend"
   vpc_id      = aws_vpc.main.id
-
-  ingress {
-    description     = "SSH from bastion"
-    from_port       = 22
-    to_port         = 22
-    protocol        = "tcp"
-    security_groups = [aws_security_group.bastion.id]
-  }
 
   ingress {
     description     = "Allow db access to frontend"
@@ -375,7 +369,7 @@ resource "aws_security_group" "db" {
 
 
 # --------------------------------------------------------------------
-# Launch Template + Auto Scaling Group
+# Launch Template + Auto Scaling Group for Frontend
 # --------------------------------------------------------------------
 
 resource "aws_launch_template" "frontend" {
@@ -394,7 +388,7 @@ resource "aws_launch_template" "frontend" {
   }
 }
 
-resource "aws_autoscaling_group" "web" {
+resource "aws_autoscaling_group" "frontend" {
   name                = "${var.project_name}-asg"
   min_size            = var.asg_min_size
   max_size            = var.asg_max_size
@@ -435,32 +429,109 @@ resource "aws_instance" "bastion" {
 }
 
 
-resource "aws_instance" "backend" {
-  ami                    = data.aws_ami.ubuntu.id
-  instance_type          = var.instance_type
-  subnet_id              = aws_subnet.private[0].id
-  vpc_security_group_ids = [aws_security_group.backend.id]
-  key_name               = aws_key_pair.my_key.key_name
-  user_data              = local.common_user_data
+# --------------------------------------------------------------------
+# Aurora Database
+# --------------------------------------------------------------------
 
-  tags = merge(local.tags, {
-    Name        = "${var.project_name}-backend"
-    Environment = var.environment
-  })
+resource "aws_db_subnet_group" "aurora" {
+  name       = "${var.project_name}-aurora-subnet-group"
+  subnet_ids = aws_subnet.private[*].id
 }
 
-resource "aws_instance" "db" {
-  ami                    = data.aws_ami.ubuntu.id
-  instance_type          = var.instance_type
-  subnet_id              = aws_subnet.private[0].id
+resource "aws_rds_cluster" "postgres" {
+  cluster_identifier     = "${var.project_name}-aurora"
+  engine                 = "aurora-postgresql"
+  database_name          = "postgres"
+  master_username        = "postgres"
+  master_password        = var.db_password
+  db_subnet_group_name   = aws_db_subnet_group.aurora.name
   vpc_security_group_ids = [aws_security_group.db.id]
-  key_name               = aws_key_pair.my_key.key_name
-  user_data              = local.common_user_data
-
-  tags = merge(local.tags, {
-    Name        = "${var.project_name}-db"
-    Environment = var.environment
-  })
+  skip_final_snapshot    = true
 }
 
+resource "aws_rds_cluster_instance" "postgres" {
+  count              = 2
+  identifier         = "${var.project_name}-aurora-${count.index}"
+  cluster_identifier = aws_rds_cluster.postgres.id
+  instance_class     = "db.t3.medium"
+  engine             = aws_rds_cluster.postgres.engine
+}
 
+# --------------------------------------------------------------------
+# Backend Load Balancer and Target Groups and Listeners
+# --------------------------------------------------------------------
+
+resource "aws_lb" "backend" {
+  name               = "${var.project_name}-backend-lb"
+  internal           = true
+  load_balancer_type = "network"
+  subnets            = aws_subnet.private[*].id
+
+  tags = local.tags
+}
+
+resource "aws_lb_target_group" "redis" {
+  name        = "${var.project_name}-redis-tg"
+  port        = 6379
+  protocol    = "TCP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "instance"
+
+  health_check {
+    protocol = "TCP"
+    port     = "6379"
+  }
+
+  tags = local.tags
+}
+
+resource "aws_lb_listener" "redis" {
+  load_balancer_arn = aws_lb.backend.arn
+  port              = 6379
+  protocol          = "TCP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.redis.arn
+  }
+}
+# --------------------------------------------------------------------
+# Backend Launch Templates and Auto Scaling Groups
+# --------------------------------------------------------------------
+
+resource "aws_launch_template" "backend" {
+  name_prefix   = "${var.project_name}-backend-lt-"
+  image_id      = data.aws_ami.ubuntu.id
+  instance_type = var.instance_type
+  key_name      = aws_key_pair.my_key.key_name
+
+  vpc_security_group_ids = [aws_security_group.backend.id]
+  user_data              = base64encode(local.common_user_data)
+
+  tag_specifications {
+    resource_type = "instance"
+    tags          = merge(local.tags, { Name = "${var.project_name}-backend" })
+  }
+}
+
+resource "aws_autoscaling_group" "backend" {
+  name                      = "${var.project_name}-backend-asg"
+  min_size                  = var.asg_min_size
+  max_size                  = var.asg_max_size
+  desired_capacity          = var.asg_desired_capacity
+  vpc_zone_identifier       = aws_subnet.private[*].id
+  target_group_arns         = [aws_lb_target_group.redis.arn]
+  health_check_type         = "ELB"
+  health_check_grace_period = 300
+
+  launch_template {
+    id      = aws_launch_template.backend.id
+    version = "$Latest"
+  }
+
+  tag {
+    key                 = "Name"
+    value               = "${var.project_name}-backend"
+    propagate_at_launch = true
+  }
+}

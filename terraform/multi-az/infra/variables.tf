@@ -63,3 +63,7 @@ variable "asg_desired_capacity" {
 }
 
 
+variable "db_password" {
+  type    = string
+  default = "postgres"
+}
