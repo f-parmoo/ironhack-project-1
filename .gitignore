@@ -3,6 +3,7 @@ node_modules/
 bin/
 obj/
 publish/
+.DS_Store
 
 # Terraform
 .terraform/
