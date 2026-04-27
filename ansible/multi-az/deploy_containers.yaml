@@ -1,27 +1,3 @@
-- name: Deploy database container
-  hosts: db
-  become: yes
-  tasks:
-    - name: Run Postgres
-      shell: |
-        docker rm -f postgres || true
-        docker volume create postgres-data || true
-        docker pull postgres:15
-        docker run -d \
-          --name postgres \
-          -e POSTGRES_USER=postgres \
-          -e POSTGRES_PASSWORD=postgres \
-          -e POSTGRES_DB=postgres \
-          -p 5432:5432 \
-          -v postgres-data:/var/lib/postgresql/data \
-          postgres:15
-
-    - name: Wait for Postgres
-      shell: |
-        until docker exec postgres pg_isready -U postgres; do
-          sleep 5
-        done
-
 - name: Deploy backend containers
   hosts: backend
   become: yes
@@ -54,7 +30,7 @@
         docker run -d \
           --name worker \
           --network backend-net \
-          -e DB_HOST="{{ hostvars['db-ec2'].ansible_host }}" \
+          -e DB_HOST={{ aurora_endpoint }} \
           -e DB_USERNAME=postgres \
           -e DB_PASSWORD=postgres \
           -e DB_NAME=postgres \
@@ -77,6 +53,7 @@
           --name vote \
           -e REDIS_HOST="{{ hostvars['backend-ec2'].ansible_host }}" \
           -e REDIS_PORT=6379 \
+          -e PGSSLMODE=require \
           -p 8080:80 \
           fatemehparmoo/vote:latest
 
@@ -86,10 +63,11 @@
         docker run -d \
           --name result \
           -e PORT=80 \
-          -e PG_HOST="{{ hostvars['db-ec2'].ansible_host }}" \
+          -e PG_HOST={{ aurora_endpoint }} \
           -e PG_PORT=5432 \
           -e PG_USER=postgres \
           -e PG_PASSWORD=postgres \
           -e PG_DATABASE=postgres \
+          -e PGSSLMODE=require \
           -p 8081:80 \
           fatemehparmoo/result:latest
