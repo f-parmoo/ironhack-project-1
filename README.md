@@ -172,7 +172,7 @@ The `bootstrap` step creates the S3 bucket and DynamoDB table used for storing a
 Go to the `bootstrap` directory and run commans:
 
 ```bash
-cd terraform/bootstrap
+cd terraform/single-az/bootstrap
 terraform init
 terraform plan
 terraform apply
@@ -206,7 +206,7 @@ Make sure the backend bucket and DynamoDB table names match the resources create
 ### Creating AWS services
 After the bootstrap step is completed, go to the infra directory and run commans:
 ```bash
-cd terraform/infra
+cd terraform/single-az/infra
 terraform init
 terraform plan
 terraform apply
@@ -223,20 +223,20 @@ Before running the Ansible playbooks, make sure to update the `hosts.ini` file w
 
 ### 📌 Update Inventory File
 
-Edit `ansible/hosts.ini` and replace the hosts with your own infrastructure details:
+Edit `ansible/single-az/hosts.ini` and replace the hosts with your own infrastructure details:
 
 ### 🐳 Install Docker
 
 Run the following command to install Docker on all target machines:
 ```bash
-ansible-playbook -i ansible/hosts.ini ansible/install_docker.yaml
+ansible-playbook -i ansible/single-az/hosts.ini ansible/single-az/install_docker.yaml
 ```
 
 ###  📦 Deploy Containers
 
 Deploy the application containers using:
 ```bash
-ansible-playbook -i ansible/hosts.ini ansible/deploy_containers.yaml
+ansible-playbook -i ansible/single-az/hosts.ini ansible/single-az/deploy_containers.yaml
 ```
 
 ### 🌐 Access the Application
