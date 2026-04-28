@@ -420,7 +420,39 @@ resource "aws_instance" "bastion" {
   vpc_security_group_ids      = [aws_security_group.bastion.id]
   key_name                    = aws_key_pair.my_key.key_name
   associate_public_ip_address = true
-  user_data                   = local.common_user_data
+  user_data                   = <<-EOF
+  #!/bin/bash
+  set -eux
+
+  # Update
+  apt-get update -y
+
+  # Install dependencies
+  apt-get install -y \
+    python3 \
+    python3-pip \
+    git \
+    curl \
+    ansible \
+    iputils-ping \
+    netcat-openbsd
+
+  # Go to ubuntu home
+  cd /home/ubuntu
+
+  # Clone repo (if not exists)
+  if [ ! -d "ironhack-project-1" ]; then
+    git clone https://github.com/f-parmoo/ironhack-project-1.git
+  else
+    cd ironhack-project-1
+    git pull
+  fi
+
+  # Fix permissions
+  chown -R ubuntu:ubuntu /home/ubuntu/ironhack-project-1
+
+  EOF
+
 
   tags = merge(local.tags, {
     Name        = "${var.project_name}-bastion"
@@ -535,3 +567,4 @@ resource "aws_autoscaling_group" "backend" {
     propagate_at_launch = true
   }
 }
+

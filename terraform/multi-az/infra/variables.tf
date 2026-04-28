@@ -67,3 +67,14 @@ variable "db_password" {
   type    = string
   default = "postgres"
 }
+
+variable "bastion_private_key_file_path" {
+  description = "Private SSH key path for Lambda to SSH into bastion"
+  type        = string
+}
+
+variable "ansible_project_path_on_bastion" {
+  description = "Path of project repo on bastion"
+  type        = string
+  default     = "/home/ubuntu/ironhack-project-1"
+}
