@@ -1,0 +1,2 @@
+aurora_endpoint: fatemeh-voting-prj-ha-aurora.cluster-c8dksii68r5i.us-east-1.rds.amazonaws.com
+redis_endpoint: fatemeh-voting-prj-ha-backend-lb-cdda35d429a504b7.elb.us-east-1.amazonaws.com
