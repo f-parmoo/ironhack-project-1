@@ -51,7 +51,7 @@
         docker rm -f vote || true
         docker run -d \
           --name vote \
-          -e REDIS_HOST="{{ hostvars['backend-ec2'].ansible_host }}" \
+          -e REDIS_HOST="{{ redis_endpoint }}" \
           -e REDIS_PORT=6379 \
           -e PGSSLMODE=require \
           -p 8080:80 \

@@ -157,36 +157,85 @@ This ensures the image is built for the desired platform.
 
 ## 🌍 Terraform Setup
 
-The Terraform configuration is split into two parts:
+This project supports two infrastructure approaches:
 
-1. `bootstrap`
-2. `infra`
+1. `single-az`
+2. `multi-az`
 
-You must apply the `bootstrap` configuration first.  
-The `bootstrap` step creates the S3 bucket and DynamoDB table used for storing and locking the Terraform remote state.
+The `single-az` setup is a simpler architecture where all core resources are deployed in one Availability Zone.
+
+The `multi-az` setup is designed for higher availability. In this architecture, public and private subnets are created across multiple Availability Zones, the frontend runs behind a load balancer, backend instances can be distributed across AZs, and the database is managed by **Amazon Aurora**, which provides database replication and improved availability.
 
 ---
 
+### 🧱 Terraform Directory Structure
+
+```text
+terraform/
+  single-az/
+    bootstrap/
+    infra/
+
+  multi-az/
+    bootstrap/
+    infra/
+```
+
+Each approach has two Terraform parts:
+
+- bootstrap
+- infra
+
+You must apply the bootstrap configuration first.
+The bootstrap step creates the S3 bucket and DynamoDB table used for storing and locking the Terraform remote state.
+
+---
 ### 🧱 Bootstrap Terraform Backend
 
-Go to the `bootstrap` directory and run commans:
-
-```bash
+For the single-az setup:
+```
 cd terraform/single-az/bootstrap
+terraform init
+terraform plan
+terraform apply
+```
+
+For the multi-az setup:
+```
+cd terraform/multi-az/bootstrap
 terraform init
 terraform plan
 terraform apply
 ```
 This will create:
 
-An S3 bucket for Terraform state
-S3 bucket versioning
-Server-side encryption
-Public access blocking
-A DynamoDB table for Terraform state locking
+- An S3 bucket for Terraform state
+- S3 bucket versioning
+- Server-side encryption
+- Public access blocking
+- A DynamoDB table for Terraform state locking
 
+---
 ### 🏗️ Deploy Infrastructure
-#### 📌 Terraform Remote State
+
+After the bootstrap step is completed, deploy the infrastructure.
+
+For the single-az setup:
+```
+cd terraform/single-az/infra
+terraform init
+terraform plan
+terraform apply
+```
+For the multi-az setup:
+```
+cd terraform/multi-az/infra
+terraform init
+terraform plan
+terraform apply
+```
+
+### 📌 Terraform Remote State
 
 The infra configuration uses the S3 backend created in the bootstrap step:
 ```
@@ -202,48 +251,121 @@ terraform {
   }
 }
 ```
-Make sure the backend bucket and DynamoDB table names match the resources created by the bootstrap configuration.
-### Creating AWS services
-After the bootstrap step is completed, go to the infra directory and run commans:
-```bash
-cd terraform/single-az/infra
-terraform init
-terraform plan
-terraform apply
+Make sure the backend bucket and DynamoDB table names match the resources created by the corresponding bootstrap configuration.
+
+---
+## 🔑 Terraform Outputs Required by Ansible
+
+In the multi-az setup, Terraform outputs two important values:
 ```
+output "aurora_endpoint" {
+  value = aws_rds_cluster.postgres.endpoint
+}
 
+output "redis_endpoint" {
+  value = aws_lb.backend.dns_name
+}
+```
+After running Terraform:
 
+terraform output
 
+or:
 
+terraform output -raw aurora_endpoint
+terraform output -raw redis_endpoint
+
+Copy these values into:
+```
+ansible/multi-az/group_vars/all.yml
+```
+Example:
+```
+aurora_endpoint: voting-project-ha-aurora.cluster-xxxxxx.us-east-1.rds.amazonaws.com
+redis_endpoint: voting-project-ha-backend-lb-xxxxxx.elb.us-east-1.amazonaws.com
+```
+These variables are used by the containers:
+
+- aurora_endpoint is used by the worker and result services to connect to Aurora PostgreSQL.
+- redis_endpoint is used by the vote service to connect to Redis through the internal Network Load Balancer.
+
+Aurora requires SSL connections, so the application containers use:
+
+PGSSLMODE=require
 ---
 
 ## ⚙️ Ansible Setup
 
-Before running the Ansible playbooks, make sure to update the `hosts.ini` file with your own server IP addresses.
+Before running the Ansible playbooks, update the relevant hosts.ini file with your own server IP addresses.
 
-### 📌 Update Inventory File
-
-Edit `ansible/single-az/hosts.ini` and replace the hosts with your own infrastructure details:
-
-### 🐳 Install Docker
-
-Run the following command to install Docker on all target machines:
-```bash
-ansible-playbook -i ansible/single-az/hosts.ini ansible/single-az/install_docker.yaml
+For single-az:
 ```
-
-###  📦 Deploy Containers
-
-Deploy the application containers using:
-```bash
-ansible-playbook -i ansible/single-az/hosts.ini ansible/single-az/deploy_containers.yaml
+ansible/single-az/hosts.ini
 ```
-
-### 🌐 Access the Application
-
-After deployment, you can access the services via:
-
-Frontend: http://<FRONTEND_PUBLIC_IP>:8080
-Backend: http://<FRONTEND_PUBLIC_IP>:8081
+For multi-az:
+```
+ansible/multi-az/hosts.ini
+```
 
 ---
+### 🐳 Install Docker
+
+For the single-az setup:
+```
+ansible-playbook -i ansible/single-az/hosts.ini ansible/single-az/install_docker.yaml
+```
+For the multi-az setup:
+```
+ansible-playbook -i ansible/multi-az/hosts.ini ansible/multi-az/install_docker.yaml
+📦 Deploy Containers
+```
+For the single-az setup:
+```
+ansible-playbook -i ansible/single-az/hosts.ini ansible/single-az/deploy_containers.yaml
+```
+For the multi-az setup:
+```
+ansible-playbook -i ansible/multi-az/hosts.ini ansible/multi-az/deploy_containers.yaml
+```
+### 🌐 Access the Application
+#### Single-AZ
+
+After deployment, access the services via the frontend public IP:
+```
+Vote app:   http://<FRONTEND_PUBLIC_IP>:8080
+Result app: http://<FRONTEND_PUBLIC_IP>:8081
+```
+#### Multi-AZ
+
+After deployment, access the services via the public Application Load Balancer DNS:
+```
+Vote app:   http://<ALB_DNS_NAME>:8080
+Result app: http://<ALB_DNS_NAME>:8081
+```
+---
+
+## 🏛️ Architecture Notes
+#### Single-AZ
+
+The single-az architecture includes:
+
+- One VPC
+- One public subnet
+- One private subnet
+- One frontend EC2 instance in the public subnet
+- Backend and database EC2 instances in the private subnet
+- NAT Gateway for private subnet outbound access
+
+
+#### Multi-AZ
+
+The multi-az architecture improves availability by using:
+
+- Public subnets across multiple Availability Zones
+- Private subnets across multiple Availability Zones
+- Application Load Balancer for frontend traffic
+- Frontend instances distributed across private subnets
+- Backend instances designed to run across multiple AZs
+- Amazon Aurora for the PostgreSQL database layer
+
+Aurora is used instead of a manually managed PostgreSQL EC2 instance because it provides managed replication, automated failover capabilities, and better availability for the database layer.

@@ -44,8 +44,14 @@ var pgDatabase = process.env.PG_DATABASE || 'postgres';
 var connectionString = `postgresql://${pgUser}:${pgPassword}@${pgHost}:${pgPort}/${pgDatabase}`;
 console.log(connectionString);
 
-var { Pool } = require('pg');
-var pool = new Pool({ connectionString: connectionString });
+
+var pgSslMode = process.env.PGSSLMODE || 'disable';
+var pool = new Pool({
+  connectionString: connectionString,
+  ssl: pgSslMode === 'require'
+    ? { rejectUnauthorized: false }
+    : false
+});
 
 async.retry(
   { times: 1000, interval: 1000 },
