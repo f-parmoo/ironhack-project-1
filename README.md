@@ -163,13 +163,14 @@ This project supports two infrastructure approaches:
 2. `multi-az`
 
 The `single-az` setup is a simpler architecture where all core resources are deployed in one Availability Zone.
-
+![alt text](image.png)
 The `multi-az` setup is designed for higher availability. In this architecture, public and private subnets are created across multiple Availability Zones, the frontend runs behind a load balancer, backend instances can be distributed across AZs, and the database is managed by **Amazon Aurora**, which provides database replication and improved availability.
+![alt text](image-1.png)
 
 ---
 
 ### 🧱 Terraform Directory Structure
-
+![alt text](image-2.png)
 ```text
 terraform/
   single-az/
