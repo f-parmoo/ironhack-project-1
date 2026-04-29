@@ -16,6 +16,7 @@ publish/
 .terraform.lock.hcl
 terraform.tfvars
 lambda_build
+lambda_run_ansible.zip
 
 # SSH keys
 *.pem
