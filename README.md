@@ -159,18 +159,38 @@ This ensures the image is built for the desired platform.
 
 This project supports two infrastructure approaches:
 
-1. `single-az`
-2. `multi-az`
+#### 1. `single-az`
 
 The `single-az` setup is a simpler architecture where all core resources are deployed in one Availability Zone.
-![alt text](image.png)
+![Single-AZ](/images/single-az.png)
+The single-az architecture includes:
+
+- One VPC
+- One public subnet
+- One private subnet
+- One frontend EC2 instance in the public subnet
+- Backend and database EC2 instances in the private subnet
+- NAT Gateway for private subnet outbound access
+
+#### 2. `multi-az`
 The `multi-az` setup is designed for higher availability. In this architecture, public and private subnets are created across multiple Availability Zones, the frontend runs behind a load balancer, backend instances can be distributed across AZs, and the database is managed by **Amazon Aurora**, which provides database replication and improved availability.
-![alt text](image-1.png)
+![Multi-AZ](/images/multi-az.png)
+
+The multi-az architecture improves availability by using:
+
+- Public subnets across multiple Availability Zones
+- Private subnets across multiple Availability Zones
+- Application Load Balancer for frontend traffic
+- Frontend instances distributed across private subnets
+- Backend instances designed to run across multiple AZs
+- Amazon Aurora for the PostgreSQL database layer
+
+Aurora is used instead of a manually managed PostgreSQL EC2 instance because it provides managed replication, automated failover capabilities, and better availability for the database layer.
 
 ---
 
 ### 🧱 Terraform Directory Structure
-![alt text](image-2.png)
+![Terraform directory structure](/images/terraform-structure.png)
 ```text
 terraform/
   single-az/
@@ -340,30 +360,8 @@ Vote app:   http://<ALB_DNS_NAME>:8080
 Result app: http://<ALB_DNS_NAME>:8081
 ```
 
----
-
-## 🏛️ Architecture Notes
-#### Single-AZ
-
-The single-az architecture includes:
-
-- One VPC
-- One public subnet
-- One private subnet
-- One frontend EC2 instance in the public subnet
-- Backend and database EC2 instances in the private subnet
-- NAT Gateway for private subnet outbound access
 
 
-#### Multi-AZ
 
-The multi-az architecture improves availability by using:
 
-- Public subnets across multiple Availability Zones
-- Private subnets across multiple Availability Zones
-- Application Load Balancer for frontend traffic
-- Frontend instances distributed across private subnets
-- Backend instances designed to run across multiple AZs
-- Amazon Aurora for the PostgreSQL database layer
 
-Aurora is used instead of a manually managed PostgreSQL EC2 instance because it provides managed replication, automated failover capabilities, and better availability for the database layer.
