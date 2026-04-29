@@ -15,6 +15,7 @@ publish/
 *.tfstate.*
 .terraform.lock.hcl
 terraform.tfvars
+lambda_build
 
 # SSH keys
 *.pem
