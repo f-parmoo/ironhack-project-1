@@ -1,9 +1,11 @@
 # Services
 node_modules/
-bin/
-obj/
 publish/
 .DS_Store
+
+# Services (.NET)
+**/bin/
+**/obj/
 
 # Terraform
 .terraform/

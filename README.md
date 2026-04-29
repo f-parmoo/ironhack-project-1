@@ -216,25 +216,6 @@ This will create:
 - A DynamoDB table for Terraform state locking
 
 ---
-### 🏗️ Deploy Infrastructure
-
-After the bootstrap step is completed, deploy the infrastructure.
-
-For the single-az setup:
-```
-cd terraform/single-az/infra
-terraform init
-terraform plan
-terraform apply
-```
-For the multi-az setup:
-```
-cd terraform/multi-az/infra
-terraform init
-terraform plan
-terraform apply
-```
-
 ### 📌 Terraform Remote State
 
 The infra configuration uses the S3 backend created in the bootstrap step:
@@ -254,7 +235,53 @@ terraform {
 Make sure the backend bucket and DynamoDB table names match the resources created by the corresponding bootstrap configuration.
 
 ---
-## 🔑 Terraform Outputs Required by Ansible
+### 🏗️ Deploy Infrastructure
+
+After the bootstrap step is completed, deploy the infrastructure.
+
+single-az setup:
+```
+cd terraform/single-az/infra
+terraform init
+terraform plan
+terraform apply
+terraform output -raw ansible_inventory > ../../../ansible/single-az/hosts.ini
+```
+
+multi-az setup:
+```
+cd terraform/multi-az/infra
+terraform init
+terraform plan
+terraform apply
+```
+
+
+---
+
+## ⚙️ Ansible Setup
+
+### 🧱 Single-AZ
+
+#### 📄 Inventory
+The `hosts.ini` file is generated automatically using Terraform outputs:
+
+```bash
+cd terraform/single-az/infra
+terraform output -raw ansible_inventory > ../../../ansible/single-az/hosts.ini
+```
+#### 🐳 Install Docker
+ansible-playbook -i ansible/single-az/hosts.ini ansible/single-az/install_docker.yaml
+#### 📦 Deploy Containers
+ansible-playbook -i ansible/single-az/hosts.ini ansible/single-az/deploy_containers.yaml
+#### 🌐 Access the Application
+```
+Vote app:   http://<FRONTEND_PUBLIC_IP>:8080
+Result app: http://<FRONTEND_PUBLIC_IP>:8081
+```
+---
+### 🏗️ Multi-AZ
+#### 🔑 Terraform Outputs Required by Ansible
 
 In the multi-az setup, Terraform outputs two important values:
 ```
@@ -289,59 +316,29 @@ These variables are used by the containers:
 - aurora_endpoint is used by the worker and result services to connect to Aurora PostgreSQL.
 - redis_endpoint is used by the vote service to connect to Redis through the internal Network Load Balancer.
 
-Aurora requires SSL connections, so the application containers use:
+Aurora requires SSL connections, so the application containers use: PGSSLMODE=require
 
-PGSSLMODE=require
----
 
-## ⚙️ Ansible Setup
+#### 📄 Inventory
 
-Before running the Ansible playbooks, update the relevant hosts.ini file with your own server IP addresses.
-
-For single-az:
-```
-ansible/single-az/hosts.ini
-```
-For multi-az:
+You must manually update the inventory file with your infrastructure details:
 ```
 ansible/multi-az/hosts.ini
 ```
-
----
-### 🐳 Install Docker
-
-For the single-az setup:
-```
-ansible-playbook -i ansible/single-az/hosts.ini ansible/single-az/install_docker.yaml
-```
-For the multi-az setup:
+#### 🐳 Install Docker
 ```
 ansible-playbook -i ansible/multi-az/hosts.ini ansible/multi-az/install_docker.yaml
-📦 Deploy Containers
 ```
-For the single-az setup:
-```
-ansible-playbook -i ansible/single-az/hosts.ini ansible/single-az/deploy_containers.yaml
-```
-For the multi-az setup:
+#### 📦 Deploy Containers
 ```
 ansible-playbook -i ansible/multi-az/hosts.ini ansible/multi-az/deploy_containers.yaml
 ```
-### 🌐 Access the Application
-#### Single-AZ
-
-After deployment, access the services via the frontend public IP:
-```
-Vote app:   http://<FRONTEND_PUBLIC_IP>:8080
-Result app: http://<FRONTEND_PUBLIC_IP>:8081
-```
-#### Multi-AZ
-
-After deployment, access the services via the public Application Load Balancer DNS:
+#### 🌐 Access the Application
 ```
 Vote app:   http://<ALB_DNS_NAME>:8080
 Result app: http://<ALB_DNS_NAME>:8081
 ```
+
 ---
 
 ## 🏛️ Architecture Notes
