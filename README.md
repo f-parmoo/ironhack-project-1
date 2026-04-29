@@ -1,5 +1,28 @@
 <!-- © 2026 | Ironhack -->
 
+## 📌 Project Scope
+
+This project focuses on **Infrastructure as Code (IaC)** and **automation** using Terraform and Ansible.
+
+The application itself is a pre-existing sample (voting app) and was **not developed by me**.
+
+My contributions in this project include:
+
+- Designing and implementing cloud infrastructure on AWS using Terraform
+- Creating both single-AZ and multi-AZ architectures
+- Automating server configuration and deployment using Ansible
+- Managing networking (VPC, subnets, routing, security groups)
+- Implementing bastion host access and private networking
+- Deploying containerized services using Docker
+---
+## 🧠 Learning Goals
+
+This project was built as part of the Ironhack DevOps & Cloud Engineering bootcamp, with the goal of:
+
+- Understanding Infrastructure as Code (Terraform)
+- Automating provisioning and configuration (Ansible)
+- Designing scalable and highly available cloud architectures
+- Working with AWS networking components
 ---
 
 # Multi-Stack Voting Application
@@ -186,6 +209,32 @@ The multi-az architecture improves availability by using:
 - Amazon Aurora for the PostgreSQL database layer
 
 Aurora is used instead of a manually managed PostgreSQL EC2 instance because it provides managed replication, automated failover capabilities, and better availability for the database layer.
+
+---
+
+## 🔑 SSH Key Setup
+
+This project requires an SSH key pair to access the EC2 instances.
+
+### 1. Generate a key pair
+
+```bash
+ssh-keygen -t rsa -b 4096 -f voting-project-key
+```
+This will create:
+
+voting-project-key (private key)
+voting-project-key.pub (public key)
+### 2. Place the private key
+
+Move the private key to the following directory:
+```
+keys/voting-project-key.pem
+```
+Make sure the file has the correct permissions:
+```
+chmod 400 keys/voting-project-key.pem
+```
 
 ---
 

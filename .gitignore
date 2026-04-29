@@ -1,14 +1,16 @@
-# Services
+# Node
 node_modules/
-publish/
-.DS_Store
 
-# Services (.NET)
+# .NET
 **/bin/
 **/obj/
+publish/
+
+# OS
+.DS_Store
 
 # Terraform
-.terraform/
+**/.terraform/
 *.tfstate
 *.tfstate.*
 .terraform.lock.hcl
@@ -18,3 +20,7 @@ terraform.tfvars
 *.pem
 id_rsa*
 *.pub
+
+# Ansible generated/local files
+ansible/*/hosts.ini
+ansible/*/group_vars/all.yml
