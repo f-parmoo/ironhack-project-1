@@ -24,3 +24,5 @@ id_rsa*
 # Ansible generated/local files
 ansible/*/hosts.ini
 ansible/*/group_vars/all.yml
+
+k8s/secret.yaml
