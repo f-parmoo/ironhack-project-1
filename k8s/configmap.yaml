@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:
+  DB_HOST: postgres
+  DB_USERNAME: postgres
+  DB_NAME: postgres
+
+  PG_HOST: postgres
+  PG_USER: postgres
+  PG_DATABASE: postgres
+
+  REDIS_HOST: redis
