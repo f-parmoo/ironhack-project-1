@@ -36,6 +36,52 @@ Check cluster access:
 ```bash
 kubectl get nodes
 ```
+
+---
+
+## Install AWS EBS CSI Driver
+
+This project uses a PersistentVolumeClaim (PVC) for PostgreSQL storage.  
+To allow Kubernetes to dynamically provision AWS EBS volumes, you must install the AWS EBS CSI Driver and attach the required IAM permissions.
+
+Install the EBS CSI Driver addon:
+
+```bash
+eksctl create addon \
+  --name aws-ebs-csi-driver \
+  --cluster <your-cluster-name> \
+  --region <your-region>
+```
+
+Attach the required IAM policy to your EKS node group role:
+
+```bash
+aws iam attach-role-policy \
+  --role-name <your-node-instance-role> \
+  --policy-arn arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy
+```
+
+You can find your node instance role using:
+
+```bash
+aws iam list-roles
+```
+
+Verify the CSI driver is running:
+
+```bash
+kubectl get pods -n kube-system
+```
+
+You should see pods similar to:
+
+```text
+ebs-csi-controller
+ebs-csi-node
+```
+
+Without the EBS CSI Driver and IAM permissions, PostgreSQL PVCs may remain in the `Pending` state because Kubernetes cannot provision EBS volumes automatically.
+
 ---
 ## Install NGINX Ingress Controller
 
