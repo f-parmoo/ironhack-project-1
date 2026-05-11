@@ -25,4 +25,4 @@ id_rsa*
 ansible/*/hosts.ini
 ansible/*/group_vars/all.yml
 
-k8s/secret.yaml
+k8s/base/secret.yaml
