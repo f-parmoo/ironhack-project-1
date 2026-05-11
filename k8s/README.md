@@ -131,15 +131,38 @@ kubectl get svc -n ingress-nginx
 
 ## Kubernetes Secrets
 
-For local development and testing, create a `secret.yaml` file from the provided sample:
+Secrets are not stored in the repository.
 
-```bash
-cp k8s/base/secret-sample.yaml k8s/base/secret.yaml
+Use the provided sample files to create environment-specific secret files.
+
+### Staging
+```
+cp k8s/overlays/staging/secret-sample.yaml k8s/overlays/staging/secret.yaml
+```
+Edit the values inside:
+
+k8s/overlays/staging/secret.yaml
+
+Then apply it:
+```
+kubectl apply -f k8s/overlays/staging/secret.yaml -n staging
 ```
 
-Edit the secret values if needed.
+### Production
+```
+cp k8s/overlays/production/secret-sample.yaml k8s/overlays/production/secret.yaml
+```
+Edit the values inside:
 
-The real `secret.yaml` file is ignored by Git and should never be committed.
+k8s/overlays/production/secret.yaml
+
+Then apply it:
+```
+kubectl apply -f k8s/overlays/production/secret.yaml -n production
+```
+The real secret.yaml files are ignored by Git and should never be committed.
+
+In CI/CD pipelines, secrets should be created from GitHub Actions Environment Secrets.
 
 ---
 
@@ -287,14 +310,3 @@ http://result.fatemeh.ironlabs.online
 ```
 
 ---
-
-## Notes
-
-For demo purposes, Kubernetes Secrets are used for database credentials.
-
-In a production environment, secrets should be managed using a more secure solution such as:
-
-* GitHub Actions Secrets
-* AWS Secrets Manager
-* External Secrets Operator
-* HashiCorp Vault
