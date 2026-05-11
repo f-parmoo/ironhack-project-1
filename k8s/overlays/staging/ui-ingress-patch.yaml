@@ -2,7 +2,15 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: ui-ingress
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-http
 spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - vote.staging.fatemeh.ironlabs.online
+        - result.staging.fatemeh.ironlabs.online
+      secretName: staging-ui-tls
   rules:
     - host: vote.staging.fatemeh.ironlabs.online
       http:
