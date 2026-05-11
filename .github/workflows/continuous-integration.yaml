@@ -182,26 +182,3 @@ jobs:
       - name: Validate production overlay
         run: |
           kubectl kustomize k8s/overlays/production
-
-  ci-passed:
-    name: CI Passed
-    runs-on: ubuntu-latest
-    needs:
-      - detect-changes
-      - vote-ci
-      - result-ci
-      - worker-ci
-      - validate-k8s
-    if: always()
-    steps:
-      - name: Check CI result
-        run: |
-          if [[ "${{ needs.vote-ci.result }}" == "failure" || \
-                "${{ needs.result-ci.result }}" == "failure" || \
-                "${{ needs.worker-ci.result }}" == "failure" || \
-                "${{ needs.validate-k8s.result }}" == "failure" ]]; then
-            echo "One or more CI jobs failed"
-            exit 1
-          fi
-
-          echo "CI passed"
