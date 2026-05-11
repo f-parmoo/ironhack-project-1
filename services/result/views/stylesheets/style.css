@@ -60,7 +60,7 @@ body {
 #choice {
   transition: all 300ms linear;
   line-height: 1.3em;
-  background: #8b5cf6;
+  background: #fff;
   box-shadow:
     10px 0 0 #fff,
     -10px 0 0 #fff;
