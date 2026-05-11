@@ -10,8 +10,8 @@ spec:
         - name: worker-container
           resources:
             requests:
-              cpu: "10m"
-              memory: "16Mi"
+              cpu: "250m"
+              memory: "384Mi"
             limits:
-              cpu: "50m"
-              memory: "64Mi"
+              cpu: "750m"
+              memory: "768Mi"
