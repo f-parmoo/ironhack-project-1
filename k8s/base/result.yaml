@@ -24,25 +24,26 @@ spec:
           valueFrom:
             configMapKeyRef:
               name: app-config
-              key: PG_HOST
-
-        - name: PG_USER
-          valueFrom:
-            configMapKeyRef:
-              name: app-config
-              key: PG_USER
+              key: DB_HOST
 
         - name: PG_DATABASE
           valueFrom:
             configMapKeyRef:
               name: app-config
-              key: PG_DATABASE
+              key: DB_NAME
+
+        - name: PG_USER
+          valueFrom:
+            secretKeyRef:
+              name: app-secret
+              key: DB_USERNAME
+
 
         - name: PG_PASSWORD
           valueFrom:
             secretKeyRef:
               name: app-secret
-              key: PG_PASSWORD
+              key: DB_PASSWORD
 
         - name: PG_PORT
           value: "5432"
