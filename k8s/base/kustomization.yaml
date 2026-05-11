@@ -1,0 +1,9 @@
+resources:
+  - configmap.yaml
+  - secret.yaml
+  - postgres.yaml
+  - redis.yaml
+  - result.yaml
+  - vote.yaml
+  - worker.yaml
+  - ui-ingress.yaml
