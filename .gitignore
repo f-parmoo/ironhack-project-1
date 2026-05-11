@@ -25,4 +25,5 @@ id_rsa*
 ansible/*/hosts.ini
 ansible/*/group_vars/all.yml
 
-k8s/base/secret.yaml
+k8s/overlays/production/secret.yaml
+k8s/overlays/staging/secret.yaml
