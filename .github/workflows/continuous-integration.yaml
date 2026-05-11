@@ -1,0 +1,180 @@
+name: Continuous Integration
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  detect-changes:
+    name: Detect Changed Services
+    runs-on: ubuntu-latest
+
+    outputs:
+      vote: ${{ steps.filter.outputs.vote }}
+      result: ${{ steps.filter.outputs.result }}
+      worker: ${{ steps.filter.outputs.worker }}
+      k8s: ${{ steps.filter.outputs.k8s }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Detect changed files
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            vote:
+              - 'services/vote/**'
+
+            result:
+              - 'services/result/**'
+
+            worker:
+              - 'services/worker/**'
+
+            k8s:
+              - 'k8s/**'
+
+  vote-ci:
+    name: Vote CI
+    runs-on: ubuntu-latest
+    needs: detect-changes
+
+    if: needs.detect-changes.outputs.vote == 'true'
+
+    defaults:
+      run:
+        working-directory: services/vote
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Format check
+        run: |
+          black --check .
+
+      - name: Lint
+        run: |
+          flake8 .
+
+      - name: Run tests
+        run: |
+          pytest
+
+      - name: Build Docker image
+        run: |
+          docker build -t vote-ci .
+
+  result-ci:
+    name: Result CI
+    runs-on: ubuntu-latest
+    needs: detect-changes
+
+    if: needs.detect-changes.outputs.result == 'true'
+
+    defaults:
+      run:
+        working-directory: services/result
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          npm install
+
+      - name: Format check
+        run: |
+          npm run format:check
+
+      - name: Lint
+        run: |
+          npm run lint
+
+      - name: Run tests
+        run: |
+          npm test
+
+      - name: Build Docker image
+        run: |
+          docker build -t result-ci .
+
+  worker-ci:
+    name: Worker CI
+    runs-on: ubuntu-latest
+    needs: detect-changes
+
+    if: needs.detect-changes.outputs.worker == 'true'
+
+    defaults:
+      run:
+        working-directory: services/worker
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: |
+          dotnet restore
+
+      - name: Format check
+        run: |
+          dotnet format --verify-no-changes
+
+      - name: Build
+        run: |
+          dotnet build --no-restore
+
+      - name: Run tests
+        run: |
+          dotnet test --no-build
+
+      - name: Build Docker image
+        run: |
+          docker build -t worker-ci .
+
+  validate-k8s:
+    name: Validate Kubernetes Manifests
+    runs-on: ubuntu-latest
+    needs: detect-changes
+
+    if: needs.detect-changes.outputs.k8s == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Validate staging overlay
+        run: |
+          kubectl kustomize k8s/overlays/staging
+
+      - name: Validate production overlay
+        run: |
+          kubectl kustomize k8s/overlays/production
