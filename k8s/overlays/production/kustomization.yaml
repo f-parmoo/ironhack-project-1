@@ -1,4 +1,5 @@
 resources:
+  - secret.yaml
   - ../../base
 
 namespace: production

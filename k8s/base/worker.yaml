@@ -21,17 +21,17 @@ spec:
               name: app-config
               key: DB_HOST
 
-        - name: DB_USERNAME
-          valueFrom:
-            configMapKeyRef:
-              name: app-config
-              key: DB_USERNAME
-
         - name: DB_NAME
           valueFrom:
             configMapKeyRef:
               name: app-config
               key: DB_NAME
+
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: app-secret
+              key: DB_USERNAME
 
         - name: DB_PASSWORD
           valueFrom:

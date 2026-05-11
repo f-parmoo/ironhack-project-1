@@ -25,14 +25,14 @@ spec:
               key: DB_NAME
         - name: POSTGRES_USER
           valueFrom:
-            configMapKeyRef:
-              name: app-config
+            secretKeyRef:
+              name: app-secret
               key: DB_USERNAME
         - name: POSTGRES_PASSWORD
           valueFrom:
             secretKeyRef:
               name: app-secret
-              key: POSTGRES_PASSWORD
+              key: DB_PASSWORD
         - name: PGDATA
           value: /var/lib/postgresql/data/pgdata
         ports:
