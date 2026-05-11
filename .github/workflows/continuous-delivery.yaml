@@ -18,8 +18,7 @@ on:
 
 jobs:
   deploy:
-    name: Build and Deploy
-
+    name: Deploy to ${{ github.event.inputs.environment || 'staging' }}
     runs-on: ubuntu-latest
 
     environment:
@@ -27,28 +26,20 @@ jobs:
 
     env:
       ENVIRONMENT: ${{ github.event.inputs.environment || 'staging' }}
-      SHA_SHORT: ${{ github.sha }}
 
     steps:
-      # -----------------------------------
-      # Checkout
-      # -----------------------------------
-
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      # -----------------------------------
-      # Generate short SHA
-      # -----------------------------------
 
       - name: Generate short SHA
         id: vars
         run: |
           echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
-      # -----------------------------------
-      # Docker Hub Login
-      # -----------------------------------
+      - name: Print deployment target
+        run: |
+          echo "Deploying to: $ENVIRONMENT"
+          echo "Image tag: ${{ steps.vars.outputs.sha_short }}"
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -56,67 +47,36 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # -----------------------------------
-      # Build & Push Vote
-      # -----------------------------------
-
-      - name: Build vote image
+      - name: Build and push vote image
         run: |
           docker build \
-            -t fatemehparmoo/vote:latest \
             -t fatemehparmoo/vote:${{ steps.vars.outputs.sha_short }} \
             ./services/vote
 
-      - name: Push vote image
-        run: |
-          docker push fatemehparmoo/vote:latest
           docker push fatemehparmoo/vote:${{ steps.vars.outputs.sha_short }}
 
-      # -----------------------------------
-      # Build & Push Result
-      # -----------------------------------
-
-      - name: Build result image
+      - name: Build and push result image
         run: |
           docker build \
-            -t fatemehparmoo/result:latest \
             -t fatemehparmoo/result:${{ steps.vars.outputs.sha_short }} \
             ./services/result
 
-      - name: Push result image
-        run: |
-          docker push fatemehparmoo/result:latest
           docker push fatemehparmoo/result:${{ steps.vars.outputs.sha_short }}
 
-      # -----------------------------------
-      # Build & Push Worker
-      # -----------------------------------
-
-      - name: Build worker image
+      - name: Build and push worker image
         run: |
           docker build \
-            -t fatemehparmoo/worker:latest \
             -t fatemehparmoo/worker:${{ steps.vars.outputs.sha_short }} \
             ./services/worker
 
-      - name: Push worker image
-        run: |
-          docker push fatemehparmoo/worker:latest
           docker push fatemehparmoo/worker:${{ steps.vars.outputs.sha_short }}
 
-      # -----------------------------------
-      # AWS Login
-      # -----------------------------------
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
-          
-      # -----------------------------------
-      # Configure kubectl
-      # -----------------------------------
 
       - name: Configure kubeconfig
         run: |
@@ -127,9 +87,10 @@ jobs:
         run: |
           kubectl get nodes
 
-      # -----------------------------------
-      # Create / Update Secret
-      # -----------------------------------
+      - name: Create namespace
+        run: |
+          kubectl create namespace $ENVIRONMENT \
+            --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Create Kubernetes secret
         run: |
@@ -139,36 +100,20 @@ jobs:
             -n $ENVIRONMENT \
             --dry-run=client -o yaml | kubectl apply -f -
 
-      # -----------------------------------
-      # Deploy overlay
-      # -----------------------------------
+      - name: Update image tags in Kustomize overlay
+        run: |
+          cd k8s/overlays/$ENVIRONMENT
+
+          kustomize edit set image fatemehparmoo/vote=fatemehparmoo/vote:${{ steps.vars.outputs.sha_short }}
+          kustomize edit set image fatemehparmoo/result=fatemehparmoo/result:${{ steps.vars.outputs.sha_short }}
+          kustomize edit set image fatemehparmoo/worker=fatemehparmoo/worker:${{ steps.vars.outputs.sha_short }}
 
       - name: Deploy overlay
         run: |
           kubectl apply -k k8s/overlays/$ENVIRONMENT
 
-      # -----------------------------------
-      # Restart deployments
-      # -----------------------------------
-
-      - name: Restart deployments
-        run: |
-          kubectl rollout restart deployment/vote-deployment -n $ENVIRONMENT
-          kubectl rollout restart deployment/result-deployment -n $ENVIRONMENT
-          kubectl rollout restart deployment/worker-deployment -n $ENVIRONMENT
-
-      # -----------------------------------
-      # Verify rollout
-      # -----------------------------------
-
-      - name: Verify vote rollout
+      - name: Verify rollout
         run: |
           kubectl rollout status deployment/vote-deployment -n $ENVIRONMENT
-
-      - name: Verify result rollout
-        run: |
           kubectl rollout status deployment/result-deployment -n $ENVIRONMENT
-
-      - name: Verify worker rollout
-        run: |
           kubectl rollout status deployment/worker-deployment -n $ENVIRONMENT
