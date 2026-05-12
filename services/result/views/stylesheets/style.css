@@ -59,8 +59,8 @@ body{
 #choice{
   transition: all 300ms linear;
   line-height:1.3em;
-  background:#d991d7;
-  box-shadow: 10px 0 0 #d991d7, -10px 0 0 #d991d7;
+  background:#fff;
+  box-shadow: 10px 0 0 #fff, -10px 0 0 #fff;
   vertical-align:middle;
   font-size:40px;
   font-weight: 600;
